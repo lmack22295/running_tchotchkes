@@ -118,41 +118,55 @@ def calculate_scale(run_data_dict, scale_factor=0.6):  # Reduced from 1.2 to 0.6
     return max_span * scale_factor / 2
 
 def create_run_grid(run_data_dict, run_info_dict, output_filename='run_grid.png'):
-    """Create a grid of run visualizations with additional info"""
+    """Create a modern, aesthetically pleasing grid of run visualizations"""
     import math
-    
+    from matplotlib.patches import FancyBboxPatch, Rectangle
+    from matplotlib.colors import LinearSegmentedColormap
+    import matplotlib.patheffects as path_effects
+
     # Calculate grid dimensions based on number of runs
     n_runs = len(run_data_dict)
     n_cols = min(6, n_runs)  # 6 columns max
     n_rows = math.ceil(n_runs / n_cols)
-    
-    # Create figure with controlled size
-    fig = plt.figure(figsize=(5*n_cols, 5*n_rows))
-    
-    # Adjust margins to minimum
-    plt.subplots_adjust(hspace=0, wspace=0)
-    
+
+    # Create figure with modern styling - larger base size for better quality
+    fig = plt.figure(figsize=(6*n_cols, 6*n_rows), facecolor='#f8f9fa')
+
+    # Minimal spacing between subplots with small gap for borders
+    plt.subplots_adjust(hspace=0.015, wspace=0.015, left=0.005, right=0.995, top=0.995, bottom=0.005)
+
     # Sort run IDs by date
     sorted_run_ids = sorted(run_data_dict.keys())
-    
+
+    # Modern color palette for route gradients and borders
+    gradient_colors = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#fb923c']
+    border_colors = ['#818cf8', '#a78bfa', '#f0abfc', '#fb7185', '#fdba74']
+
     for idx, run_id in enumerate(sorted_run_ids):
         # Create subplot with map projection
         ax = fig.add_subplot(n_rows, n_cols, idx + 1, projection=ccrs.Mercator())
         ax.set_aspect('auto')
-        plt.subplots_adjust(left=0, right=1, top=1, bottom=0, wspace=0, hspace=0)
-        ax.set_axis_off()
-        
+
+        # Add colorful border by keeping spines visible with color
+        route_color = gradient_colors[idx % len(gradient_colors)]
+        border_color = border_colors[idx % len(border_colors)]
+
+        for spine in ax.spines.values():
+            spine.set_edgecolor(border_color)
+            spine.set_linewidth(3)
+            spine.set_visible(True)
+
         # Calculate the center and range of coordinates
         center_long = (max(run_data_dict[run_id][1]) + min(run_data_dict[run_id][1])) / 2
         center_lat = (max(run_data_dict[run_id][0]) + min(run_data_dict[run_id][0])) / 2
-        
+
         # Calculate the range with a buffer
-        long_range = (max(run_data_dict[run_id][1]) - min(run_data_dict[run_id][1])) * 1.1  # 10% buffer
+        long_range = (max(run_data_dict[run_id][1]) - min(run_data_dict[run_id][1])) * 1.15
         lat_range = (max(run_data_dict[run_id][0]) - min(run_data_dict[run_id][0])) * 2
-        
+
         # Use the larger range to maintain square aspect
         max_range = max(long_range, lat_range)
-        
+
         # Set consistent bounds
         ax.set_extent([
             center_long - max_range/2,
@@ -160,71 +174,118 @@ def create_run_grid(run_data_dict, run_info_dict, output_filename='run_grid.png'
             center_lat - max_range/2,
             center_lat + max_range/2
         ], crs=ccrs.PlateCarree())
-        
-        # Rest of the plotting code remains the same...
+
+        # Add map tiles with subtle desaturation effect
         osm_tiles = cimgt.OSM()
-        ax.add_image(osm_tiles, 13)
-        
-        # Add a semi-transparent white overlay
-        ax.patch.set_facecolor('white')
-        ax.patch.set_alpha(0.4)
-        
-        # Plot lines
-        ax.plot(run_data_dict[run_id][1], run_data_dict[run_id][0], 
-               color='black',
-               linewidth=8,
+        ax.add_image(osm_tiles, 14)
+
+        # Add a gradient overlay for modern feel
+        ax.patch.set_facecolor('#ffffff')
+        ax.patch.set_alpha(0.3)
+
+        # Choose color from gradient palette
+        route_color = gradient_colors[idx % len(gradient_colors)]
+
+        # Plot route with modern styling - thicker shadow effect
+        ax.plot(run_data_dict[run_id][1], run_data_dict[run_id][0],
+               color='#1a1a1a',
+               linewidth=10,
                transform=ccrs.PlateCarree(),
                zorder=5,
-               alpha=1.0,
-               solid_capstyle='round')
-        
-        ax.plot(run_data_dict[run_id][1], run_data_dict[run_id][0], 
-               color='#FC4C02',
-               linewidth=6,
+               alpha=0.3,
+               solid_capstyle='round',
+               solid_joinstyle='round')
+
+        # Main route line with vibrant color
+        ax.plot(run_data_dict[run_id][1], run_data_dict[run_id][0],
+               color=route_color,
+               linewidth=7,
                transform=ccrs.PlateCarree(),
                zorder=6,
-               alpha=1.0,
-               solid_capstyle='round')
-        
-        # Add text with consistent positioning
+               alpha=0.95,
+               solid_capstyle='round',
+               solid_joinstyle='round')
+
+        # Add a subtle highlight line on top
+        ax.plot(run_data_dict[run_id][1], run_data_dict[run_id][0],
+               color='white',
+               linewidth=3,
+               transform=ccrs.PlateCarree(),
+               zorder=7,
+               alpha=0.4,
+               solid_capstyle='round',
+               solid_joinstyle='round')
+
+        # Add text with modern styling
         distance, pace, date, name = run_info_dict[run_id]
-        bbox_props = dict(facecolor='white', 
-                         alpha=0.7,
-                         edgecolor='none',
-                         pad=3.0)
-        
-        # Add text elements
-        ax.text(0.05, 0.95, date,
+
+        # Create modern rounded text boxes with matching colors
+        bbox_props = dict(
+            boxstyle='round,pad=0.6',
+            facecolor='white',
+            alpha=0.95,
+            edgecolor=route_color,
+            linewidth=2
+        )
+
+        # Date with elegant styling
+        date_text = ax.text(0.5, 0.95, date,
+                transform=ax.transAxes,
+                fontsize=16,
+                fontweight='600',
+                color='#1a1a1a',
+                ha='center',
+                va='top',
+                bbox=bbox_props,
+                zorder=8,
+                family='sans-serif')
+
+        # Run name with modern font
+        name_bbox = dict(
+            boxstyle='round,pad=0.5',
+            facecolor=route_color,
+            alpha=0.9,
+            edgecolor='none'
+        )
+
+        name_text = ax.text(0.5, 0.12, name,
                 transform=ax.transAxes,
                 fontsize=14,
-                fontweight='bold',
-                color='#FC4C02',
-                ha='left',
-                va='top',
-                bbox=bbox_props,
-                zorder=7)
-        
-        ax.text(0.05, 0.90, name,
+                fontweight='500',
+                color='white',
+                ha='center',
+                va='center',
+                bbox=name_bbox,
+                zorder=8,
+                family='sans-serif')
+
+        # Stats with clean design
+        stats_bbox = dict(
+            boxstyle='round,pad=0.5',
+            facecolor='white',
+            alpha=0.95,
+            edgecolor='#e5e7eb',
+            linewidth=1.5
+        )
+
+        stats_text = ax.text(0.5, 0.05, f"{distance:.1f} mi  •  {pace}",
                 transform=ax.transAxes,
-                fontsize=14,
-                fontweight='bold',
-                color='#FC4C02',
-                ha='left',
-                va='top',
-                bbox=bbox_props,
-                zorder=7)
-                
-        ax.text(0.05, 0.85, f"{distance:.1f} mi | {pace}",
-                transform=ax.transAxes,
-                fontsize=12,
-                color='#FC4C02',
-                ha='left',
-                va='top',
-                bbox=bbox_props,
-                zorder=7)
-    
-    # Save with consistent DPI
-    plt.savefig(output_filename, dpi=150, bbox_inches='tight', pad_inches=0)
+                fontsize=13,
+                fontweight='500',
+                color='#4b5563',
+                ha='center',
+                va='center',
+                bbox=stats_bbox,
+                zorder=8,
+                family='sans-serif')
+
+        # Add subtle drop shadow to text
+        date_text.set_path_effects([path_effects.withSimplePatchShadow(offset=(1, -1), shadow_rgbFace='#00000020')])
+        name_text.set_path_effects([path_effects.withSimplePatchShadow(offset=(1, -1), shadow_rgbFace='#00000030')])
+        stats_text.set_path_effects([path_effects.withSimplePatchShadow(offset=(1, -1), shadow_rgbFace='#00000020')])
+
+    # Save with high DPI for print quality
+    plt.savefig(output_filename, dpi=300, bbox_inches='tight', pad_inches=0.02, facecolor='#f8f9fa')
     plt.close()
 
 
